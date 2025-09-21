@@ -1,0 +1,3 @@
+reporter_name="Ahmed ARIF"
+reporter_url="contact@eotics.com"
+reporter_comment="Config to build cross-compiler with mingw-w64 for ARM64 Windows target"

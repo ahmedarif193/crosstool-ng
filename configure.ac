@@ -306,8 +306,8 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_FUNC_ALLOCA
 
-AM_GNU_GETTEXT([external])
-AM_GNU_GETTEXT_VERSION([0.19.7])
+# AM_GNU_GETTEXT([external])
+# AM_GNU_GETTEXT_VERSION([0.19.7])
 
 # For now, curses are needed to build kconfig. We may support a command-line
 # only configuration without curses later. For now, fail in configure but

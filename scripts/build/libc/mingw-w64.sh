@@ -59,6 +59,18 @@ mingw_w64_headers() {
     # here to workaround this, and seems to be here to last... :-/
     CT_DoExecLog ALL ln -sv "usr/${CT_TARGET}" "${CT_SYSROOT_DIR}/mingw"
 
+    # Fix ARM64 fabsl function inline assembly issue in installed headers
+    if [ "${CT_ARCH}" = "arm" ]; then
+        CT_DoLog EXTRA "Applying ARM64 math.h fix for fabsl function in installed headers"
+        for math_h in "${CT_SYSROOT_DIR}/usr/${CT_TARGET}/include/math.h" \
+                      "${CT_SYSROOT_DIR}/mingw/include/math.h"; do
+            if [ -f "${math_h}" ]; then
+                sed -i 's@^\(.*__CRT_INLINE long double __cdecl fabsl.*\)@\1@; /^#if __SIZEOF_LONG_DOUBLE__ == __SIZEOF_DOUBLE__$/s@$@ || defined(__x86_64__) || defined(__arm__) || defined(__aarch64__)@' \
+                    "${math_h}" || true
+            fi
+        done
+    fi
+
     CT_EndStep
 }
 
@@ -124,6 +136,7 @@ do_mingw_pthreads()
     # DLLTOOLFLAGS does not appear to be currently used by winpthread package, but
     # the master package uses this variable and describes this as one of the changes
     # needed for i686 in mingw-w64-doc/howto-build/mingw-w64-howto-build-adv.txt
+    CT_DoLog DEBUG "multi_target value is: '${multi_target}'"
     case "${multi_target}" in
         i[3456]86-*)
             rcflags="-F pe-i386"
@@ -133,6 +146,11 @@ do_mingw_pthreads()
             rcflags="-F pe-x86-64"
             dlltoolflags="-m i386:x86_64"
             ;;
+        aarch64-*)
+            CT_DoLog DEBUG "Matched aarch64-* pattern"
+            rcflags="-F pe-aarch64-little"
+            dlltoolflags="-m arm64"
+            ;;
         *)
             CT_Abort "Tuple ${multi_target} is not supported by mingw-w64"
             ;;
@@ -140,9 +158,19 @@ do_mingw_pthreads()
 
     CT_DoLog EXTRA "Configuring mingw-w64-winpthreads"
 
+    # For aarch64, we need to provide libgcc atomics or use Windows Interlocked functions
+    local extra_ldflags=""
+    case "${multi_target}" in
+        aarch64-*)
+            # Link with libgcc for atomic intrinsics on ARM64
+            extra_ldflags="-lgcc -lkernel32"
+            ;;
+    esac
+
     CT_DoExecLog CFG \
     CFLAGS="${multi_flags}" \
     CXXFLAGS="${multi_flags}" \
+    LDFLAGS="${extra_ldflags}" \
     RCFLAGS="${rcflags}" \
     DLLTOOLFLAGS="${dlltoolflags}" \
     ${CONFIG_SHELL} \
@@ -210,6 +238,13 @@ mingw_w64_main()
         --host=${CT_TARGET} \
         --enable-wildcard \
         "${crt_opts[@]}"
+
+    # Fix ARM64 fabsl function inline assembly issue
+    if [ "${CT_ARCH}" = "arm" ]; then
+        CT_DoLog EXTRA "Applying ARM64 math.h fix for fabsl function"
+        sed -i 's@^#if __SIZEOF_LONG_DOUBLE__ == __SIZEOF_DOUBLE__$@#if __SIZEOF_LONG_DOUBLE__ == __SIZEOF_DOUBLE__ || defined(__x86_64__) || defined(__arm__) || defined(__aarch64__)@' \
+            "${CT_SYSROOT_DIR}/mingw/include/math.h" || true
+    fi
 
     # mingw-w64-crt has a missing dependency occasionally breaking the
     # parallel build. See https://github.com/crosstool-ng/crosstool-ng/issues/246

@@ -1309,6 +1309,17 @@ do_gcc_backend() {
 
     # NB: not using CT_ALL_TARGET_CFLAGS/CT_ALL_TARGET_LDFLAGS here!
     # See do_gcc_core_backend for explanation.
+    #
+    # MinGW note: when using the POSIX threading model on Windows,
+    # DLLs must be fully resolved at link time. libstdc++ uses
+    # gthreads (pthreads) internally, so ensure target links include
+    # -lpthread (an alias to libwinpthread) to avoid undefined
+    # references to pthread_* and sched_yield during libstdc++ link.
+    local ctng_target_ldflags_for_config="${CT_TARGET_LDFLAGS}"
+    if [ "${CT_KERNEL_WINDOWS}" = "y" ] && [ "${CT_THREADS}" = "posix" ]; then
+        ctng_target_ldflags_for_config="${ctng_target_ldflags_for_config} -lpthread"
+    fi
+
     CT_DoExecLog CFG                                   \
     CC_FOR_BUILD="${CT_BUILD}-gcc"                     \
     CFLAGS="${cflags}"                                 \
@@ -1318,7 +1329,7 @@ do_gcc_backend() {
     LDFLAGS="${final_LDFLAGS[*]}"                      \
     CFLAGS_FOR_TARGET="${cflags_for_target}"           \
     CXXFLAGS_FOR_TARGET="${cxxflags_for_target}"       \
-    LDFLAGS_FOR_TARGET="${CT_TARGET_LDFLAGS}"          \
+    LDFLAGS_FOR_TARGET="${ctng_target_ldflags_for_config}"          \
     ${CONFIG_SHELL}                                    \
     "${CT_SRC_DIR}/gcc/configure"                      \
         --build=${CT_BUILD}                            \
