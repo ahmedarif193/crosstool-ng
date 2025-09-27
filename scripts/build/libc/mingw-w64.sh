@@ -59,18 +59,6 @@ mingw_w64_headers() {
     # here to workaround this, and seems to be here to last... :-/
     CT_DoExecLog ALL ln -sv "usr/${CT_TARGET}" "${CT_SYSROOT_DIR}/mingw"
 
-    # Fix ARM64 fabsl function inline assembly issue in installed headers
-    if [ "${CT_ARCH}" = "arm" ]; then
-        CT_DoLog EXTRA "Applying ARM64 math.h fix for fabsl function in installed headers"
-        for math_h in "${CT_SYSROOT_DIR}/usr/${CT_TARGET}/include/math.h" \
-                      "${CT_SYSROOT_DIR}/mingw/include/math.h"; do
-            if [ -f "${math_h}" ]; then
-                sed -i 's@^\(.*__CRT_INLINE long double __cdecl fabsl.*\)@\1@; /^#if __SIZEOF_LONG_DOUBLE__ == __SIZEOF_DOUBLE__$/s@$@ || defined(__x86_64__) || defined(__arm__) || defined(__aarch64__)@' \
-                    "${math_h}" || true
-            fi
-        done
-    fi
-
     CT_EndStep
 }
 
@@ -238,13 +226,6 @@ mingw_w64_main()
         --host=${CT_TARGET} \
         --enable-wildcard \
         "${crt_opts[@]}"
-
-    # Fix ARM64 fabsl function inline assembly issue
-    if [ "${CT_ARCH}" = "arm" ]; then
-        CT_DoLog EXTRA "Applying ARM64 math.h fix for fabsl function"
-        sed -i 's@^#if __SIZEOF_LONG_DOUBLE__ == __SIZEOF_DOUBLE__$@#if __SIZEOF_LONG_DOUBLE__ == __SIZEOF_DOUBLE__ || defined(__x86_64__) || defined(__arm__) || defined(__aarch64__)@' \
-            "${CT_SYSROOT_DIR}/mingw/include/math.h" || true
-    fi
 
     # mingw-w64-crt has a missing dependency occasionally breaking the
     # parallel build. See https://github.com/crosstool-ng/crosstool-ng/issues/246

@@ -8,19 +8,17 @@ it respect --disable-sjlj-exceptions like i386-mingw does.
 
 --- a/gcc/config/aarch64/cygming.h
 +++ b/gcc/config/aarch64/cygming.h
-@@ -26,8 +26,13 @@
-
- #define TARGET_SEH (TARGET_ABI_MS)
-
+@@ -26,8 +26,13 @@ along with GCC; see the file COPYING3.  If not see
+ #undef PREFERRED_DEBUGGING_TYPE
+ #define PREFERRED_DEBUGGING_TYPE DWARF2_DEBUG
+ 
 -#undef DWARF2_UNWIND_INFO
--#define DWARF2_UNWIND_INFO 0
 +#ifndef DWARF2_UNWIND_INFO
 +#if  (defined (CONFIG_SJLJ_EXCEPTIONS) && !CONFIG_SJLJ_EXCEPTIONS)
 +#define DWARF2_UNWIND_INFO 1
 +#else
-+#define DWARF2_UNWIND_INFO 0
+ #define DWARF2_UNWIND_INFO 0
 +#endif
 +#endif
-
- #undef TARGET_PECOFF
- #define TARGET_PECOFF 1
+ 
+ #define FASTCALL_PREFIX '@'
